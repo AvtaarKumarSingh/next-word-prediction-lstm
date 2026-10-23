@@ -61,6 +61,18 @@ The dataset was created for this project. No external public dataset is claimed 
 8. Sentence Generation: Repeats prediction to generate multiple words.
 9. Web Interface: Displays the completed sentence through Streamlit.
 
+## Application Preview
+
+Here is a preview of the NextWord AI application built using Streamlit.
+
+<p align="center">
+  <img src="images/app-screenshot.png" alt="NextWord AI Streamlit Application" width="850">
+</p>
+
+<p align="center">
+  <em>Interactive next-word prediction and sentence completion interface.</em>
+</p>
+
 ## Installation and Setup
 
 ### 1. Clone the Repository

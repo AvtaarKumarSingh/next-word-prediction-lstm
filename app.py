@@ -1,4 +1,3 @@
-
 import pickle
 from pathlib import Path
 
@@ -10,7 +9,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 st.set_page_config(
-    page_title="NextWord AI",
+    page_title="NextWord",
     page_icon="✨",
     layout="wide"
 )
@@ -68,6 +67,15 @@ st.markdown("""
     color: #b7bfd8;
     font-size: 0.92rem;
     line-height: 1.6;
+}
+.instruction {
+    background: rgba(167,139,250,0.09);
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: #d8d7f5;
+    line-height: 1.7;
+    margin: 12px 0 20px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -146,10 +154,45 @@ def predict_next_words(model, tokenizer, text, count):
     return result
 
 
-left_col, right_col = st.columns(
-    [7, 3],
-    gap="large"
-)
+def get_words(text):
+    import re
+    return re.findall(r"[a-z0-9]+(?:['’-][a-z0-9]+)*", str(text).lower())
+
+
+def find_matching_sentences(text, dataset):
+    input_words = get_words(text)
+
+    if not input_words or "data" not in dataset.columns:
+        return []
+
+    matches = []
+
+    for sentence in dataset["data"].dropna().astype(str):
+        sentence_words = get_words(sentence)
+
+        if len(sentence_words) >= len(input_words):
+            if sentence_words[:len(input_words)] == input_words:
+                matches.append(sentence)
+
+    return matches
+
+
+def get_sentence_continuation(sentence, text, count):
+    sentence_words = sentence.split()
+    input_count = len(text.strip().split())
+    remaining_words = sentence_words[input_count:]
+    predicted_words = remaining_words[:count]
+    result = text.strip()
+
+    if predicted_words:
+        result += " " + " ".join(predicted_words)
+
+    sentence_completed = len(remaining_words) <= count
+
+    return result, len(predicted_words), sentence_completed
+
+
+left_col, right_col = st.columns([7, 3], gap="large")
 
 
 with left_col:
@@ -160,7 +203,15 @@ with left_col:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### ✍️ Enter your sentence")
+    st.markdown("### ✍️ Start Your Sentence")
+
+    st.markdown("""
+    <div class="instruction">
+        💡 <b>Ready to complete your thought?</b><br>
+        Start with the opening words of a sentence for the best prediction.
+        The model will help you discover what comes next!
+    </div>
+    """, unsafe_allow_html=True)
 
     text = st.text_area(
         "Start typing",
@@ -176,50 +227,89 @@ with left_col:
     )
 
     number_of_words = st.slider(
-        "How many words should AI predict?",
+        "How many words should be predicted?",
         min_value=1,
         max_value=10,
         value=3
     )
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
     if st.button("✨ Predict Next Words"):
         if word_count < 2:
             st.warning(
-                "Bhai, prediction ke liye kam se kam 2 words enter kar! 😊"
+                "Please enter at least 2 words to get a prediction."
             )
 
         elif not tokenizer.texts_to_sequences([text.strip()])[0]:
             st.warning(
-                "Input mein tokenizer ke pehchane hue words hone chahiye."
+                "Please enter words that the model recognizes."
             )
 
         else:
-            with st.spinner("AI is thinking..."):
-                prediction = predict_next_words(
-                    model,
-                    tokenizer,
-                    text,
-                    number_of_words
-                )
+            with st.spinner("Generating your prediction..."):
+                try:
+                    df = load_dataset()
+                    matches = find_matching_sentences(text, df)
+                except Exception:
+                    matches = []
 
-            st.markdown("### 💡 Prediction")
+                if matches:
+                    st.markdown("### 💡 Sentence Completion")
 
-            st.markdown(
-                f'<div class="result">{prediction}</div>',
-                unsafe_allow_html=True
-            )
+                    shown = 0
 
-            st.caption(
-                f"Requested: {number_of_words} next words · "
-                "Actual output may be shorter if no valid prediction is available."
-            )
+                    for sentence in matches[:5]:
+                        result, added_count, completed = get_sentence_continuation(
+                            sentence,
+                            text,
+                            number_of_words
+                        )
 
-            st.button(
-                "📋 Copy tip: Select the result text to copy it",
-                disabled=True
-            )
+                        if added_count == 0:
+                            continue
+
+                        shown += 1
+
+                        st.markdown(
+                            f'<div class="result">{result}</div>',
+                            unsafe_allow_html=True
+                        )
+
+                        if completed:
+                            st.caption("Sentence completed.")
+                        else:
+                            st.caption(
+                                f"Added {added_count} word(s) from the dataset."
+                            )
+
+                    if shown == 0:
+                        st.info(
+                            "This sentence has no additional words in the dataset."
+                        )
+
+                    if len(matches) > 5:
+                        st.caption(
+                            "Showing 5 matching sentences. Try adding more opening words for a more specific result."
+                        )
+
+                else:
+                    prediction = predict_next_words(
+                        model,
+                        tokenizer,
+                        text,
+                        number_of_words
+                    )
+
+                    st.markdown("### 💡 LSTM Prediction")
+
+                    st.markdown(
+                        f'<div class="result">{prediction}</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    st.caption(
+                        "No matching sentence was found in the dataset, "
+                        "so the LSTM model generated the continuation."
+                    )
 
 
 with right_col:

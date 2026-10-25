@@ -66,7 +66,7 @@ The dataset was created for this project. No external public dataset is claimed 
 Here is a preview of the NextWord AI application built using Streamlit.
 
 <p align="center">
-  <img src="app-screenshot.png" alt="NextWord AI Streamlit Application" width="850">
+  <img src="app-screenshot.jpg" alt="NextWord AI Streamlit Application" width="850">
 </p>
 
 <p align="center">

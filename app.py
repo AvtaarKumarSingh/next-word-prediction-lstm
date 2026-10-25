@@ -198,7 +198,7 @@ left_col, right_col = st.columns([7, 3], gap="large")
 with left_col:
     st.markdown("""
     <div class="hero">
-        <h1>✨ NextWord AI</h1>
+        <h1>✨ NextWord </h1>
         <p>Your thought. Our prediction. Complete the sentence.</p>
     </div>
     """, unsafe_allow_html=True)

@@ -64,15 +64,10 @@ st.markdown("""
     color: #101323;
     filter: brightness(1.08);
 }
-.dataset-card {
-    background: rgba(103,232,249,0.045);
-    border: 1px solid rgba(167,139,250,0.28);
-    border-radius: 16px;
-    padding: 18px;
-}
 .dataset-subtitle {
     color: #b7bfd8;
     font-size: 0.92rem;
+    line-height: 1.6;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -93,23 +88,16 @@ try:
 except Exception:
     st.error(
         "Model load nahi hua. Check karo ki "
-        "`lstm.keras` aur `tokenizer.pkl` "
-        "app.py ke folder mein hain."
+        "`lstm.keras` aur `tokenizer.pkl` app.py ke folder mein hain."
     )
     st.stop()
 
 
-
-
-DATASET_PATH = Path(__file__).parent / "data.csv"
-
-
 @st.cache_data
 def load_dataset():
-    return pd.read_csv(DATASET_PATH)
+    dataset_path = Path(__file__).parent / "data.csv"
+    return pd.read_csv(dataset_path)
 
-
-# ---------------- PREDICTION LOGIC ----------------
 
 def predict_next_words(model, tokenizer, text, count):
     index_to_word = {
@@ -158,21 +146,16 @@ def predict_next_words(model, tokenizer, text, count):
     return result
 
 
-# ---------------- TWO-COLUMN LAYOUT ----------------
-
 left_col, right_col = st.columns(
-    [1, 1.05],
+    [7, 3],
     gap="large"
 )
 
 
-
-
 with left_col:
-
     st.markdown("""
     <div class="hero">
-        <h1>✨ NextWord </h1>
+        <h1>✨ NextWord AI</h1>
         <p>Your thought. Our prediction. Complete the sentence.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -189,8 +172,7 @@ with left_col:
     word_count = len(text.split()) if text.strip() else 0
 
     st.caption(
-        f"📝 Words entered: {word_count} · "
-        "Minimum required: 2"
+        f"📝 Words entered: {word_count} · Minimum required: 2"
     )
 
     number_of_words = st.slider(
@@ -205,14 +187,12 @@ with left_col:
     if st.button("✨ Predict Next Words"):
         if word_count < 2:
             st.warning(
-                "Bhai, prediction ke liye kam se kam "
-                "2 words enter kar! 😊"
+                "Bhai, prediction ke liye kam se kam 2 words enter kar! 😊"
             )
 
         elif not tokenizer.texts_to_sequences([text.strip()])[0]:
             st.warning(
-                "Input mein tokenizer ke pehchane hue "
-                "words hone chahiye."
+                "Input mein tokenizer ke pehchane hue words hone chahiye."
             )
 
         else:
@@ -233,8 +213,7 @@ with left_col:
 
             st.caption(
                 f"Requested: {number_of_words} next words · "
-                "Actual output may be shorter if no valid "
-                "prediction is available."
+                "Actual output may be shorter if no valid prediction is available."
             )
 
             st.button(
@@ -243,12 +222,7 @@ with left_col:
             )
 
 
-# ==================================================
-# RIGHT SIDE: DATASET EXPLORER
-# ==================================================
-
 with right_col:
-
     st.markdown("""
     <div class="hero">
         <h1 style="font-size: 2rem;">📚 Dataset Explorer</h1>
@@ -258,8 +232,8 @@ with right_col:
 
     st.markdown(
         '<div class="dataset-subtitle">'
-        'Browse the training data, search sentences, '
-        'and explore the patterns learned by the model.'
+        'Explore the training sentences and understand the '
+        'text patterns used by the model.'
         '</div>',
         unsafe_allow_html=True
     )
@@ -269,7 +243,6 @@ with right_col:
     try:
         df = load_dataset()
 
-        # Dataset statistics
         stat1, stat2 = st.columns(2)
 
         with stat1:
@@ -280,47 +253,19 @@ with right_col:
 
         st.write("")
 
-        # Search dataset
-        search_text = st.text_input(
-            "🔎 Search the dataset",
-            placeholder="Type a word or sentence...",
-            key="dataset_search"
-        )
+        st.caption(f"Showing all {len(df):,} rows")
 
-        filtered_df = df
-
-        if search_text.strip():
-            mask = df.astype(str).apply(
-                lambda column: column.str.contains(
-                    search_text.strip(),
-                    case=False,
-                    regex=False,
-                    na=False
-                )
-            ).any(axis=1)
-
-            filtered_df = df[mask]
-
-        st.caption(
-            f"Showing {len(filtered_df):,} of "
-            f"{len(df):,} rows"
-        )
-
-        # Fixed height: initially shows around 5-6 rows.
-        # Scroll inside the table to explore the remaining rows.
         st.dataframe(
-            filtered_df,
+            df,
             height=250,
             use_container_width=True,
             hide_index=True
         )
 
         st.caption(
-            "↕️ Scroll inside the table to explore more rows. "
-            "Click column headers to sort."
+            "↕️ Scroll inside the table to explore the complete dataset."
         )
 
-        # Download complete dataset, not just search results
         st.download_button(
             label="⬇️ Download Full Dataset CSV",
             data=df.to_csv(index=False).encode("utf-8"),
@@ -329,57 +274,14 @@ with right_col:
             use_container_width=True
         )
 
-        # Sample text for prediction
-        st.markdown("### 💡 Try a Dataset Example")
-
-        if len(df.columns) > 0:
-            text_columns = df.select_dtypes(
-                include=["object", "string"]
-            ).columns.tolist()
-
-            if not text_columns:
-                text_columns = df.columns.tolist()
-
-            selected_column = st.selectbox(
-                "Choose a text column",
-                text_columns,
-                key="example_column"
-            )
-
-            sentences = (
-                df[selected_column]
-                .dropna()
-                .astype(str)
-                .str.strip()
-            )
-
-            sentences = sentences[sentences.str.len() > 0]
-
-            if not sentences.empty:
-                # Select up to five actual dataset examples
-                examples = sentences.drop_duplicates().head(5)
-
-                for i, sentence in enumerate(examples, start=1):
-                    st.code(
-                        f"{i}. {sentence}",
-                        language=None
-                    )
-
-                st.caption(
-                    "Copy an example into the predictor on the left. "
-                    "These are dataset examples, not guaranteed "
-                    "correct predictions."
-                )
-
     except FileNotFoundError:
         st.error(
-            "`data.csv` nahi mili. Is file ko `app.py` ke "
-            "same folder mein rakho aur GitHub par push karo."
+            "`data.csv` nahi mili. Is file ko app.py ke same "
+            "folder mein rakho aur GitHub par push karo."
         )
 
     except Exception as e:
         st.error(f"Dataset load nahi ho paaya: {e}")
-
 
 
 st.markdown("""
